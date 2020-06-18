@@ -5,20 +5,32 @@ from vman.apps.vnlp.training.detailed_dictionary import DetailedDictionary, Word
 
 
 class MarginNgram:
+    """
+    Prefix or suffix
+    """
     def __init__(self,
                  text: str,
                  direct: int,
                  dic_occurs: int = 0,
                  modified_count: int = 0):
         self.text = text
-        self.direct = direct
-        self.dic_occurs = dic_occurs
-        self.modified_count = modified_count
+        self.direct = direct  # 1 for prefix, -1 for suffix
+        self.dic_occurs = dic_occurs  # number of occurrences among all dict records
+        self.modified_count = modified_count  # number of words that appear both with and w/o this ngram
 
     def __repr__(self):
         ps = 'prefix' if self.direct else 'suffix'
         return f'{self.text} ({ps}, {self.dic_occurs})'
 
+    def is_in_word(self, word: str, alphabet: Alphabet) -> bool:
+        if self.direct == 1:  # prefix
+            if not word.startswith(self.text):
+                return False
+        else:
+            if not word.endswith(self.text):
+                return False
+        rem_len = len(word) - len(self.text)
+        return rem_len >= alphabet.root_min
 
 class MarginNgramsCollector:
     def __init__(self,
@@ -59,13 +71,39 @@ class MarginNgramsCollector:
             if suffixes[sfx] >= min_count:
                 self.suffixes.append(MarginNgram(sfx, -1, suffixes[sfx]))
 
+        self.filter_by_orig_morph()
+        self.filter_by_ngram_inclusion()
+
         self.prefixes.sort(key=lambda p: -len(p.text) * 1000 - p.dic_occurs)
         self.suffixes.sort(key=lambda p: -len(p.text) * 1000 - p.dic_occurs)
-        self.filter_by_orig_morph()
         self.prefixes = [p for p in self.prefixes if p.modified_count > 1]
         self.suffixes = [p for p in self.suffixes if p.modified_count > 1]
 
+    def filter_by_ngram_inclusion(self):
+        # subtract dic_occurs / modified_count numbers
+        # where the ngram is consumed by longer ngram, like
+        # "ion" (tensION) "consumes" "on" (tensiON)
+        src = [self.prefixes, self.suffixes]
+        directions = [1, -1]
+        for collection, direct in zip(src, directions):
+            for ngram in collection:
+                consumers = [c for c in collection if c.text.startswith(ngram.text) \
+                             and len(c.text) > len(ngram.text)] if direct else \
+                            [c for c in collection if c.text.endswith(ngram.text) \
+                             and len(c.text) > len(ngram.text)]
+                if consumers:
+                    for word in self.dictionary.words:
+                        if not ngram.is_in_word(word.word, self.alphabet):
+                            continue
+                        for cs in consumers:
+                            if cs.is_in_word(word.word, self.alphabet):
+                                ngram.modified_count -= 1
+                                ngram.dic_occurs -= 1
+                                break
+
     def filter_by_orig_morph(self):
+        # be sure that there's a word w/o suffix / prefix
+        # in the dictionary for each potential suffix / prefix
         src = [self.prefixes, self.suffixes]
         directions = [1, -1]
         for collection, direct in zip(src, directions):

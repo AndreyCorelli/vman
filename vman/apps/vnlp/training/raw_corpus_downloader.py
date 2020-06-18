@@ -40,8 +40,8 @@ class FileSplitStream:
 
 
 class RawCorpusDownloader:
-    MIN_FILE_WORDS = 100
-    MAX_FILE_WORDS = 1024 * 20
+    MIN_FILE_WORDS = 10 * 1000
+    MAX_FILE_WORDS = 37 * 1000
 
     @classmethod
     def download(cls,

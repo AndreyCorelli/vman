@@ -4,8 +4,9 @@ from typing import List, Dict
 
 
 class WordCard:
-    def __init__(self, word: str, count: int = 1):
+    def __init__(self, word: str, count: int = 1, root: str = ''):
         self.word = word
+        self.root = root
         self.count = count
 
     def __repr__(self):
