@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 from vman.apps.vnlp.training.alphabet import Alphabet
 from vman.apps.vnlp.training.detailed_dictionary import DetailedDictionary, WordCard
@@ -19,7 +19,7 @@ class MarginNgram:
         self.modified_count = modified_count  # number of words that appear both with and w/o this ngram
 
     def __repr__(self):
-        ps = 'prefix' if self.direct else 'suffix'
+        ps = 'prefix' if self.direct == 1 else 'suffix'
         return f'{self.text} ({ps}, {self.dic_occurs})'
 
     def is_in_word(self, word: str, alphabet: Alphabet) -> bool:
@@ -32,6 +32,16 @@ class MarginNgram:
         rem_len = len(word) - len(self.text)
         return rem_len >= alphabet.root_min
 
+    def chop_from_word(self, word: str, alphabet: Alphabet) -> Optional[str]:
+        if not self.is_in_word(word, alphabet):
+            return None
+        return word[len(self.text):] if self.direct == 1 \
+            else word[:-len(self.text)]
+
+    def add_to_word(self, word: str) -> Optional[str]:
+        return self.text + word if self.direct == 1 else word + self.text
+
+
 class MarginNgramsCollector:
     def __init__(self,
                  alphabet: Alphabet,
@@ -41,6 +51,7 @@ class MarginNgramsCollector:
         self.unique_words = {w.word for w in dictionary.words}
         self.prefixes = []  # type: List[MarginNgram]
         self.suffixes = []  # type: List[MarginNgram]
+        self.all_grams = []  # type: List[MarginNgram]
 
     def build(self):
         prefixes = {}
@@ -78,6 +89,7 @@ class MarginNgramsCollector:
         self.suffixes.sort(key=lambda p: -len(p.text) * 1000 - p.dic_occurs)
         self.prefixes = [p for p in self.prefixes if p.modified_count > 1]
         self.suffixes = [p for p in self.suffixes if p.modified_count > 1]
+        self.all_grams = self.suffixes + self.prefixes
 
     def filter_by_ngram_inclusion(self):
         # subtract dic_occurs / modified_count numbers

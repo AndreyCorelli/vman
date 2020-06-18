@@ -7,10 +7,17 @@ class WordCard:
     def __init__(self, word: str, count: int = 1, root: str = ''):
         self.word = word
         self.root = root
+        self.prefix = ''
+        self.suffix = ''
         self.count = count
 
     def __repr__(self):
-        return f'{self.word} [{self.count}]'
+        text = self.word
+        if self.prefix:
+            text = f'{self.prefix}[{self.word[len(self.prefix):]}'
+        if self.suffix:
+            text = f'{self.word[:-len(self.suffix)]}]{self.suffix}'
+        return f'{text} (x{self.count})'
 
 
 class DetailedDictionary:
