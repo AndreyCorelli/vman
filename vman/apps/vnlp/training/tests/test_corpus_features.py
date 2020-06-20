@@ -1,5 +1,9 @@
+import codecs
+import math
 import os
+from typing import List, Tuple
 from unittest import TestCase
+from PIL import Image, ImageDraw, ImageColor
 
 from vman.apps.vnlp.training.alphabet import EnAlphabet
 from vman.apps.vnlp.training.corpus_features import CorpusFeatures
@@ -33,4 +37,59 @@ class TestCorpusFeatures(TestCase):
         cf.find_dict_morphs()
         wrd = cf.dictionary.words[0]
         self.assertGreater(len(wrd.root), 0)
+
+    def test_colorize_corpuses(self):
+        corpuses = [os.path.join(RAW_CORPUS_ROOT, 'en')]
+        alphabets = [EnAlphabet]
+
+        for corp, alph in zip(corpuses, alphabets):
+            cf = CorpusFeatures('en', alph, corp)
+            cf.build()
+
+            files = [f for f in os.listdir(corp)]
+            for file_name in files:
+                full_path = os.path.join(corp, file_name)
+                if not os.path.isfile(full_path):
+                    continue
+                with codecs.open(full_path, 'r', encoding='utf-8') as fr:
+                    text = fr.read()
+                words = text.split(' ')
+                if not words:
+                    continue
+                new_file_name = os.path.splitext(full_path)[0]
+                new_file_name = new_file_name + '.png'
+
+                vectorized = cf.encode_words_by_morphs(words)
+                self.colorize_morph_vectors(new_file_name, vectorized)
+
+    def colorize_morph_vectors(self,
+                               out_file_path: str,
+                               coded: List[Tuple[float, float, float]]):
+        width = 200
+        cell_size = 4
+        height = math.ceil(len(coded) / width)
+        im = Image.new('RGB', (width * cell_size, height * 4), color='black')
+        draw = ImageDraw.Draw(im)
+
+        x, y = 0, 0
+        f_min = 0
+        f_max = max([w[0] for w in coded])
+        for freq, pf, sf in coded:
+            intense = int(255 * (freq - f_min) / f_max)
+            r = intense if pf or not (pf or sf) else 0
+            g = intense if sf or not (pf or sf) else 0
+            b = intense if not (pf or sf) else 0
+
+            #color = ImageColor.getrgb(f'{r:%02x}{g:%02x}{b:%02x}')
+            color = (r, g, b,)
+            draw.rectangle([x * cell_size, y * cell_size,
+                            (x + 1) * cell_size, (y + 1) * cell_size],
+                           fill=color)
+            x += 1
+            if x >= width:
+                x = 0
+                y += 1
+        im.save(out_file_path)
+        del draw
+
 

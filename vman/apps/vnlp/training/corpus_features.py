@@ -27,7 +27,7 @@ class CorpusFeatures:
     def encode_words_by_morphs(self, words: List[str]) -> List[Tuple[float, float, float]]:
         coded = []  # type: List[Tuple[float, float, float]]
         total = float(sum([w.count for w in self.dictionary.words]))
-        word_freq = {w: w.root_count / total for w in self.dictionary.words}
+        word_freq = {w.word: w.root_count / total for w in self.dictionary.words}
         word_cards = {w.word: w for w in self.dictionary.words}
 
         for word in words:
