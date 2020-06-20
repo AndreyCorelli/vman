@@ -15,64 +15,58 @@ class CorpusFeatures:
         self.corpus_path = corpus_path
         self.dictionary = None  # type: Optional[DetailedDictionary]
         self.ngrams_collector = None  # type: Optional[MarginNgramsCollector]
+        self.all_words = set()  # type: Set[str]
 
     def build(self):
         self.dictionary = DetailedDictionary.read_from_corpus(self.corpus_path)
+        self.all_words = {d.word for d in self.dictionary.words}
         self.ngrams_collector = MarginNgramsCollector(self.alphabet, self.dictionary)
         self.ngrams_collector.build()
         self.find_dict_morphs()
 
     def find_dict_morphs(self):
-        all_words = {d.word for d in self.dictionary.words}
         for word in self.dictionary.words:  # type: WordCard
-            # { root (word): [prefix?, suffix?] }
-            possible_roots = []  # type: List[Tuple[str, List[MarginNgram]]]
-            morph_collections = [self.ngrams_collector.prefixes, self.ngrams_collector.suffixes]
-            for pref in self.ngrams_collector.prefixes:
-                # possible root
-                pos_rt = pref.chop_from_word(word.word, self.alphabet)
-                if not pos_rt:
-                    continue
-                exists, ngr = self.word_morphs_exist(pos_rt, pref, morph_collections, all_words)
-                if not exists:
-                    continue
-                modifiers = [pref, ngr] if ngr else [pref]
-                possible_roots.append((pos_rt, modifiers,))
-            morph_collections = [self.ngrams_collector.suffixes, self.ngrams_collector.prefixes]
-            for sufx in self.ngrams_collector.suffixes:
-                pos_rt = sufx.chop_from_word(word.word, self.alphabet)
-                if not pos_rt:
-                    continue
-                exists, ngr = self.word_morphs_exist(pos_rt, sufx, morph_collections, all_words)
-                if not exists:
-                    continue
-                modifiers = [ngr, sufx] if ngr else [sufx]
-                possible_roots.append((pos_rt, modifiers,))
+            possible_roots = self.get_possible_roots(word.word)
+            root_word = self.check_possible_roots(possible_roots)
+            if root_word:
+                word.root = root_word.root
+                word.prefix = root_word.prefix
+                word.suffix = root_word.suffix
 
-            if possible_roots:
-                # the shortest root with more modifiers has priority
-                possible_roots.sort(key=lambda r: len(r[1]) * 10 - len(r[0]))
-                word.root = possible_roots[0][0]
-                mod_by_dir = {r.direct: r.text for r in possible_roots[0][1]}
-                word.prefix = mod_by_dir.get(1) or ''
-                word.suffix = mod_by_dir.get(-1) or ''
+    def get_possible_roots(
+            self,
+            word: str) -> List[WordCard]:
+        roots = {}  # Dict[str, WordCard]
+        prefs = [None] + self.ngrams_collector.prefixes
+        suffs = [None] + self.ngrams_collector.suffixes
+        for pref in prefs:
+            for suf in suffs:
+                chopped = pref.chop_from_word(word, self.alphabet) if pref else word
+                if not chopped:
+                    continue
+                chopped = suf.chop_from_word(chopped, self.alphabet) if suf else chopped
+                if chopped:
+                    card = WordCard(word)
+                    card.root = chopped
+                    card.prefix = pref.text if pref else ''
+                    card.suffix = suf.text if suf else ''
+                    roots[f'{card.prefix}+{chopped}+{card.suffix}'] = card
+        del roots[f'+{word}+']
+        root_list = [roots[r] for r in roots]
+        root_list.sort(key=lambda r: len(r.word))
+        return root_list
 
-    def word_morphs_exist(self,
-                          word: str,
-                          chopped: MarginNgram,
-                          modifiers: List[List[MarginNgram]],
-                          all_words: Set[str]) -> Tuple[bool, Optional[MarginNgram]]:
-        if word in all_words:
-            return True, None
-        if not modifiers:
-            return False, None
+    def check_possible_roots(
+            self,
+            roots: List[WordCard]) -> Optional[WordCard]:
+        prefixes = [None] + self.ngrams_collector.prefixes
+        suffixes = [None] + self.ngrams_collector.suffixes
 
-        for ngram in modifiers[0]:
-            if ngram.text == chopped.text and ngram.direct == chopped.direct:
-                continue
-            mod_word = ngram.add_to_word(word)
-            exists, ngr = self.word_morphs_exist(mod_word, ngram, modifiers[1:], all_words)
-            if exists:
-                return True, ngr
-        return False, None
-
+        for root in roots:
+            for pref in prefixes:
+                for suf in suffixes:
+                    modf = pref.text + root.root if pref else root.root
+                    modf = modf + suf.text if suf else modf
+                    if modf in self.all_words:
+                        return root
+        return None

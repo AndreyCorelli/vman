@@ -12,11 +12,10 @@ class WordCard:
         self.count = count
 
     def __repr__(self):
-        text = self.word
-        if self.prefix:
-            text = f'{self.prefix}[{self.word[len(self.prefix):]}'
-        if self.suffix:
-            text = f'{self.word[:-len(self.suffix)]}]{self.suffix}'
+        pr = self.prefix + ']' if self.prefix else ''
+        root = self.root if self.root else self.word
+        sf = '[' + self.suffix if self.suffix else ''
+        text = pr + root + sf
         return f'{text} (x{self.count})'
 
 
