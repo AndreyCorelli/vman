@@ -9,7 +9,10 @@ class WordCard:
         self.root = root
         self.prefix = ''
         self.suffix = ''
+        # count of the exact word (morph) in the dictionary
         self.count = count
+        # count of the words with the same root (root_count >= count)
+        self.root_count = 1
 
     def __repr__(self):
         pr = self.prefix + ']' if self.prefix else ''

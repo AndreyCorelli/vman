@@ -21,6 +21,8 @@ class RawTextProcessor:
             word = w.group(0)
             if cls.reg_repeated.match(word):
                 continue
+            if abet.is_number(word):
+                continue
             yield word
 
     @classmethod

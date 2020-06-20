@@ -24,6 +24,24 @@ class CorpusFeatures:
         self.ngrams_collector.build()
         self.find_dict_morphs()
 
+    def encode_words_by_morphs(self, words: List[str]) -> List[Tuple[float, float, float]]:
+        coded = []  # type: List[Tuple[float, float, float]]
+        total = float(sum([w.count for w in self.dictionary.words]))
+        word_freq = {w: w.root_count / total for w in self.dictionary.words}
+        word_cards = {w.word: w for w in self.dictionary.words}
+
+        for word in words:
+            freq = word_freq.get(word) or 0
+            pf, sf = 0.0, 0.0
+            card = word_cards.get(word)  # type: WordCard
+            if card:
+                if card.prefix:
+                    pf = 1.0
+                if card.suffix:
+                    sf = 1.0
+            coded.append((freq, pf, sf,))
+        return coded
+
     def find_dict_morphs(self):
         for word in self.dictionary.words:  # type: WordCard
             possible_roots = self.get_possible_roots(word.word)
@@ -32,6 +50,21 @@ class CorpusFeatures:
                 word.root = root_word.root
                 word.prefix = root_word.prefix
                 word.suffix = root_word.suffix
+            else:
+                word.root = word.word
+        self.count_roots()
+
+    def count_roots(self):
+        words_by_root = {}  # type: Dict[str, List[WordCard]]
+        for word in self.dictionary.words:
+            if word.root not in words_by_root:
+                words_by_root[word.root] = [word]
+            else:
+                words_by_root[word.root].append(word)
+        for root in words_by_root:
+            root_count = sum([wr.count for wr in words_by_root[root]])
+            for word in words_by_root[root]:
+                word.root_count = root_count
 
     def get_possible_roots(
             self,
