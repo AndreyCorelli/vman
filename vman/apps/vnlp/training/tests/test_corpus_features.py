@@ -5,7 +5,7 @@ from typing import List, Tuple
 from unittest import TestCase
 from PIL import Image, ImageDraw, ImageColor
 
-from vman.apps.vnlp.training.alphabet import EnAlphabet
+from vman.apps.vnlp.training.alphabet import EnAlphabet, RuAlphabet
 from vman.apps.vnlp.training.corpus_features import CorpusFeatures
 from vman.apps.vnlp.training.detailed_dictionary import DetailedDictionary, WordCard
 from vman.apps.vnlp.training.margin_ngrams import MarginNgramsCollector, MarginNgram
@@ -39,8 +39,9 @@ class TestCorpusFeatures(TestCase):
         self.assertGreater(len(wrd.root), 0)
 
     def test_colorize_corpuses(self):
-        corpuses = [os.path.join(RAW_CORPUS_ROOT, 'en')]
-        alphabets = [EnAlphabet]
+        corpuses = [os.path.join(RAW_CORPUS_ROOT, 'en'),
+                    os.path.join(RAW_CORPUS_ROOT, 'ru')]
+        alphabets = [EnAlphabet, RuAlphabet]
 
         for corp, alph in zip(corpuses, alphabets):
             cf = CorpusFeatures('en', alph, corp)
@@ -49,7 +50,7 @@ class TestCorpusFeatures(TestCase):
             files = [f for f in os.listdir(corp)]
             for file_name in files:
                 full_path = os.path.join(corp, file_name)
-                if not os.path.isfile(full_path):
+                if not os.path.isfile(full_path) or not file_name.endswith('.txt'):
                     continue
                 with codecs.open(full_path, 'r', encoding='utf-8') as fr:
                     text = fr.read()

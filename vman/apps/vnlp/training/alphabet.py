@@ -23,3 +23,7 @@ class Alphabet:
 
 class EnAlphabet(Alphabet):
     pass
+
+
+class RuAlphabet(Alphabet):
+    reg_word = re.compile(r'[абвгдеёжзийклмнопрстуфхцчшщъьэюяѣi]+')
