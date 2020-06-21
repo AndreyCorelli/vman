@@ -82,13 +82,13 @@ class MarginNgramsCollector:
             if suffixes[sfx] >= min_count:
                 self.suffixes.append(MarginNgram(sfx, -1, suffixes[sfx]))
 
-        self.filter_by_orig_morph()
-        self.filter_by_ngram_inclusion()
+        # self.filter_by_orig_morph()
+        # self.filter_by_ngram_inclusion()
 
         self.prefixes.sort(key=lambda p: -len(p.text) * 1000 - p.dic_occurs)
         self.suffixes.sort(key=lambda p: -len(p.text) * 1000 - p.dic_occurs)
-        self.prefixes = [p for p in self.prefixes if p.modified_count > 1]
-        self.suffixes = [p for p in self.suffixes if p.modified_count > 1]
+        #self.prefixes = [p for p in self.prefixes if p.modified_count > 1]
+        #self.suffixes = [p for p in self.suffixes if p.modified_count > 1]
         self.all_grams = self.suffixes + self.prefixes
 
     def filter_by_ngram_inclusion(self):

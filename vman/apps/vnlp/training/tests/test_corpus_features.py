@@ -13,9 +13,15 @@ from vman.corpus.corpus_data import RAW_CORPUS_ROOT
 
 
 class TestCorpusFeatures(TestCase):
-    def test_corpus_features(self):
+    def test_build_corpus_features_en(self):
         path_src = os.path.join(RAW_CORPUS_ROOT, 'en')
         cf = CorpusFeatures('en', EnAlphabet, path_src)
+        cf.build()
+        self.assertGreater(len(cf.ngrams_collector.suffixes), 5)
+
+    def test_build_corpus_features_ru(self):
+        path_src = os.path.join(RAW_CORPUS_ROOT, 'ru')
+        cf = CorpusFeatures('ru', RuAlphabet, path_src)
         cf.build()
         self.assertGreater(len(cf.ngrams_collector.suffixes), 5)
 
